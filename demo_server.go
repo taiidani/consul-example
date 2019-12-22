@@ -71,7 +71,7 @@ func (s *demoServer) Start(ctx context.Context, enabledProtocols []*serverProtoc
 
 func (s *demoServer) begin(ctx context.Context, port int, protocol *serverProtocol) error {
 	// Register service
-	serviceID, err := s.register(name, port, protocol)
+	serviceID, err := s.register(serviceName, port, protocol)
 	if err != nil {
 		return err
 	}

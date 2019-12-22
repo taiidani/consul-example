@@ -48,8 +48,8 @@ func (c *demoClient) Start(ctx context.Context, enabledProtocols []*serverProtoc
 			var addr serviceEntry
 			for _, protocol := range enabledProtocols {
 				// Determine randomly which method to look up with, DNS or Consul
-				method := time.Now().Unix() % 2
-				addr, err = methods[method](name, *protocol)
+				method := time.Now().Unix() % int64(len(methods))
+				addr, err = methods[method](serviceName, *protocol)
 				if err == nil {
 					break
 				}
@@ -75,13 +75,32 @@ func (c *demoClient) Start(ctx context.Context, enabledProtocols []*serverProtoc
 //
 // The version is used in place of "tcp" in order to request a specific tag.
 func (c *demoClient) resolveDNS(name string, protocol serverProtocol) (ret serviceEntry, err error) {
-	addr, srv, err := net.LookupSRV(name, protocol.version, "service.consul")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	// Custom dialer to let us talk with ports other than the default 53
+	resolver := net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{}
+			return d.DialContext(ctx, "tcp", net.JoinHostPort(consulDNSHost, consulDNSPort))
+		},
+	}
+
+	// Look up the Service DNS record (SRV) to find the port
+	_, srv, err := resolver.LookupSRV(ctx, name, protocol.version, "service.consul")
 	if err != nil || len(srv) == 0 {
-		return ret, fmt.Errorf("Unable to lookup service %s with DNS for version %s: %w", name, protocol.version, err)
+		return ret, fmt.Errorf("Unable to lookup SRV for service %s with DNS for version %s: %w", name, protocol.version, err)
+	}
+
+	// Look up the Address DNS record (A) to find the IP
+	ips, err := resolver.LookupIPAddr(ctx, fmt.Sprintf("%s.service.consul", name))
+	if err != nil {
+		return ret, fmt.Errorf("Unable to lookup IP for service %s with DNS for version %s: %w", name, protocol.version, err)
 	}
 
 	ret.method = "DNS-SRV"
-	ret.addr = addr
+	ret.addr = ips[0].String()
 	ret.port = uint(srv[0].Port)
 	ret.protocol = protocol
 	return ret, nil

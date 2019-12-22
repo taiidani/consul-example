@@ -14,7 +14,14 @@ import (
 )
 
 const (
-	name = "consul-demo"
+	// serviceName is the name of the service registered with Consul
+	serviceName = "consul-demo"
+
+	// consulDNSPort is the port that Consul is listening to for DNS requests. 8600 is Consul's default.
+	consulDNSPort = "8600"
+
+	// consulDNSHost is the host that Consul is listening on
+	consulDNSHost = "127.0.0.1"
 )
 
 type mode struct {

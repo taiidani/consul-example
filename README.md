@@ -25,10 +25,6 @@ go build
 
 This will generate a `consul-demo` binary in your directory. It supports one of two modes, "server" and "client", which is a required argument. You can also specify a `-version` flag if you want to lock it down to using only the "v1" or "v2" protocol.
 
-### Set Up Your DNS
-
-Add "127.0.0.1" to your system's DNS resolvers. This is to ensure that services on your machine reach out to Consul for discovery attempts.
-
 ### Start the Applications
 
 Next, you're going to need **three** terminal sessions open. These will be referred to as the "consul", "server", and "client" sessions.
@@ -37,7 +33,7 @@ Run the following in each session to start Consul, a server, and a client.
 
 | Session | Command | Purpose
 | ---     | ---     | ---
-| consul  | `sudo consul agent -dev -dns-port=53 -recursor=1.1.1.1` | Consul itself, providing the service catalog, DNS server, and health checks.
+| consul  | `consul agent -dev` | Consul itself, providing the service catalog, DNS server, and health checks.
 | server  | `./consul-demo server` | The demo server which will be listening for requests from the client.
 | client  | `./consul-demo client` | The demo client which will discover the server and send requests to it.
 
@@ -51,7 +47,7 @@ In a classic hosting environment, since the server keeps shuffling ports the cli
 
 The server is randomly changing protocols, but the client is keeping up with it due to the server publishing its protocol version as a discoverable tag. This tells the client exactly what protocol version to use when contacting it.
 
-For a visual, Consul should also have a UI available at http://localhost:8500. Take a look at the registered "consul-demo" service and watch as the server reregisters itself under each port. If you refresh at the right time you may also see the healch check failing which sometimes spots the server as it shuts down.
+For a visual, Consul will also have a UI available at http://localhost:8500. Take a look at the registered "consul-demo" service and watch as the server reregisters itself under each port. If you refresh at the right time you may also see the healch check failing which sometimes spots the server as it shuts down.
 
 #### High Availability
 
@@ -69,6 +65,4 @@ You should see a second server start up in your session as well as in the Consul
 
 ## Troubleshooting
 
-> I am always seeing a "no such host" for the DNS lookup
-
-This is probably due to your system configuration. Make sure that your machine's DNS settings have "127.0.0.1" set as a resolver.
+Find something wrong? File a GitHub issue!
