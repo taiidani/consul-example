@@ -56,13 +56,13 @@ func (c *demoClient) Start(ctx context.Context, enabledProtocols []*serverProtoc
 			}
 
 			if err != nil {
-				log.Println(err)
+				fmt.Printf("❌: %s\n", err)
 				continue
 			}
 
 			// Ping the service
 			if err := c.send(addr); err != nil {
-				log.Println(err)
+				fmt.Printf("❌: %s\n", err)
 			}
 		}
 	}
@@ -106,14 +106,13 @@ func (c *demoClient) resolveDNS(name string, protocol serverProtocol) (ret servi
 	return ret, nil
 }
 
-// resolveVersion resolves the given service name and version to a service entry using Consul.
+// resolveConsul resolves the given service name and version to a service entry using Consul.
 //
 // Using Consul directly provides some added functionality such as:
 // * Being able to query unhealthy services in the catalog
 // * Looking up services based on their meta data (not just tags)
 // * Being an explicit call, reducing the compexity that recursing through DNS servers might cause
 func (c *demoClient) resolveConsul(name string, protocol serverProtocol) (ret serviceEntry, err error) {
-	// But Consul IS required to lookup the version
 	addrs, _, err := c.client.Health().Service(name, protocol.version, true, nil)
 	if err != nil {
 		return ret, fmt.Errorf("Unable to lookup service %s with Consul for version %s: %w", name, protocol.version, err)
@@ -130,6 +129,7 @@ func (c *demoClient) resolveConsul(name string, protocol serverProtocol) (ret se
 
 // send will make a connection to the target server and perform a round-trip request.
 func (c *demoClient) send(svc serviceEntry) error {
+	// Open the connection to the target
 	addr := fmt.Sprintf("%s:%d", svc.addr, svc.port)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -137,20 +137,23 @@ func (c *demoClient) send(svc serviceEntry) error {
 	}
 	defer conn.Close()
 
-	fmt.Printf("Looked up with %-7s  Address: %-40s Sending %-4s using the %s protocol...", svc.method, addr, svc.protocol.expect, svc.protocol.version)
-	_, err = fmt.Fprintln(conn, svc.protocol.expect)
+	// Send request to it
+	_, err = fmt.Fprintln(conn, svc.protocol.send)
 	if err != nil {
 		return fmt.Errorf("Unable to send data to connection: %w", err)
 	}
 
-	status, err := bufio.NewReader(conn).ReadString('\n')
+	// Parse the response
+	reply, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("Unable to receive data back from server: %w", err)
 	}
 
-	fmt.Printf("Received %-4s in response\n", strings.TrimSpace(status))
-	if strings.TrimSpace(status) != svc.protocol.reply {
-		log.Println("WARNING: Message received did not match expected message" + svc.protocol.reply)
+	// Determine success/failure
+	if strings.TrimSpace(reply) != svc.protocol.reply {
+		return fmt.Errorf("Message received '%s' did not match expected message '%s'", strings.TrimSpace(reply), svc.protocol.reply)
 	}
+	fmt.Printf("✔️ Looked up with %-7s  Address: %-20s Sent '%s' using the %s protocol. Received '%s' in response.\n", svc.method, addr, svc.protocol.send, svc.protocol.version, strings.TrimSpace(reply))
+
 	return nil
 }

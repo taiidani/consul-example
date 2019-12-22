@@ -19,7 +19,7 @@ type (
 
 	serverProtocol struct {
 		version string // The version of the protocol
-		expect  string // The message to expect from a client
+		send    string // The message to expect from a client
 		reply   string // The reply to send to the client
 	}
 )
@@ -29,12 +29,12 @@ type (
 var serverVersions = []*serverProtocol{
 	{
 		version: "v2",
-		expect:  "syn",
+		send:    "syn",
 		reply:   "ack",
 	},
 	{
 		version: "v1",
-		expect:  "ping",
+		send:    "ping",
 		reply:   "pong",
 	},
 }
@@ -140,20 +140,19 @@ func (s *demoServer) loop(ctx context.Context, listener net.Listener, protocol *
 				// Telnet and healthchecks don't send any data
 				return
 			} else if err != nil {
-				log.Printf("ERROR: Unable to read data from connection: %s", err)
+				log.Printf("❌ ERROR: Unable to read data from connection: %s", err)
 				return
 			}
 
-			log.Printf("Received data '%s'...\n", strings.TrimSpace(body))
-			if strings.TrimSpace(body) != protocol.expect {
-				log.Println("WARNING: Message received did not match expected message " + protocol.expect)
+			if strings.TrimSpace(body) != protocol.send {
+				log.Printf("❌ WARNING: Message received '%s'did not match expected message %s", strings.TrimSpace(body), protocol.send)
 			}
 
 			// Write back
-			log.Printf("Returning data '%s'...\n", protocol.reply)
+			fmt.Printf("✔️ Received data '%s'. Returning data '%s'.\n", strings.TrimSpace(body), protocol.reply)
 			_, err = fmt.Fprintln(conn, protocol.reply)
 			if err != nil {
-				log.Printf("ERROR: Unable to send data to incoming connection: %s", err)
+				log.Printf("❌ ERROR: Unable to send data to incoming connection: %s", err)
 			}
 		}(conn)
 	}
